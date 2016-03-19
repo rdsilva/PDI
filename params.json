@@ -1,0 +1,6 @@
+{
+  "name": "PDI",
+  "tagline": "Atividade realizadas na disciplina de Processamento Digital de Imagens",
+  "body": "### Bem vindo ao projeto PDI\r\n\r\nEsta página é voltada para a apresentação e disponibilização de todos os trabalhos desenvolvidos durante a disciplina de Processamento Digital de Imagens, ministradas no curso de Engenharia de Computação, no período de 2016.1 na Universidade Federal do Rio Grande do Norte.\r\n\r\nEm breve organizarei esta página a explicação de todos os códigos disponíveis, contudo, cada arquivo *.cpp está devidamente comentado, tornando assim simples o entendimento do leitor.\r\n\r\nTodos os projetos estão sendo desenvolvidos utilizando:\r\n- Windows 10 64x\r\n- Visual Studio 2015\r\n- C++\r\n- OpenCV 3.0",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
