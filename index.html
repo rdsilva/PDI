@@ -424,8 +424,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="details">
 <span id="author" class="author">Rodrigo Silva</span><br>
 <span id="email" class="email"><a href="mailto:r_ds@hotmail.com">r_ds@hotmail.com</a></span><br>
-<span id="revnumber">version 1.0,</span>
-<span id="revdate">03-2016</span>
+<span id="revnumber">version 1.2,</span>
+<span id="revdate">05-2016</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -444,6 +444,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_atividade_4_2">Atividade 4.2</a></li>
 <li><a href="#_atividade_5_2_a">Atividade 5.2 A</a></li>
 <li><a href="#_atividade_5_2_b">Atividade 5.2 B</a></li>
+<li><a href="#_atividade_8_1">Atividade 8.1</a></li>
+<li><a href="#_atividade_11_1">Atividade 11.1</a></li>
 </ul>
 </li>
 </ul>
@@ -990,13 +992,425 @@ int main(int argc, char** argv) {
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_atividade_8_1">Atividade 8.1</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>Esta atividade tinha por objetivo aplicar conceitos que não são necessariamente aprendidas apenas com a disciplinad e Processamento Digital de Imagens. A <em>Transformada de Fourier</em> de um sinal, seja ele de qualquer natureza, permite um processamento menos "burocrático", uma vez que podemos realizar procedimentos matemáticos mais simples.</p>
+</li>
+<li>
+<p>O objetivo aqui é corrigir possíveis falhas de iluminação na imagem, assim é necessário que sejam trabalhadas as propriedades de reflectância e iluminação da imagem, respectivamente associados às frequências altas e baixas. Para realizar esta atividade é necessário primeiramente aplicar a função <em>Log</em> na imagem, assim conseguimos obter as duas caracteristicas citadas anteriormente nas quais precisaremos trabalhar. Depois aplicamos a transformada de Fourier e então um filtro que amplifique as altas frequências e atenue as baixas frequências. Depois de todo o processo aplicamos a inversa da transformada de Fourier e um <em>merge</em> das camadas para que obtenhamos a imagem resultado.</p>
+</li>
+</ul>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p><strong>OBS.:</strong> Use as teclas abaixo para ajustar os parametros do filtro</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Tecla</th>
+<th class="tableblock halign-left valign-top">Efeito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd>A</kbd></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aumenta a escala para baixa frequência</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd>Z</kbd></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diminui a escala para baixa frequência</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd>S</kbd></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aumenta a escala para alta frequência</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd>X</kbd></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diminui a escala para alta frequência</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd>D</kbd></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aumenta o valor de threshold</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd>C</kbd></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diminui o valor de threshold</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-CPP" data-lang="CPP">/*
+UNIVERSIDADE FEDERAL DO RIO GRANDE DO NROTE
+DEPARTAMENTO DE COMPUTAÇÃO E AUTOMAÇÃO
+PROCESSAMENTO DIGITAL DE IMAGENS
+PROF. AGOSTINHO BRITO JR.
+
+UNIDADE II
+EXERCICIO 8.1
+
+RODRIGO DANTAS DA SILVA - 2008020606
+
+*/
+
+#include &lt;iostream&gt;
+#include &lt;cmath&gt;
+#include &lt;vector&gt;
+#include &lt;string&gt;
+using namespace std;
+
+#include &lt;opencv2/opencv.hpp&gt;
+
+
+cv::Mat imgOriginal;		// imagem original
+cv::Mat imgResult;			// imagem resultado
+string ofname, isp;
+float lower, upper, threshold;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+Filtro passa alta, implementado conforme leitura do livro do Gonzalez
+*/
+void filtro(cv::Mat&amp; input, cv::Mat&amp; output, float lower, float upper, float threshold) {
+	cv::Mat* i_ptr = &amp;input;
+	int width = i_ptr-&gt;cols;
+	int height = i_ptr-&gt;rows;
+	int channel = i_ptr-&gt;channels();
+
+	cv::Mat* o_ptr = &amp;output;
+	if (i_ptr != o_ptr) {
+		*o_ptr = cv::Mat(height, width, CV_MAKETYPE(CV_32F, channel));
+	}
+
+	for (int y = 0; y&lt;height; y++) {
+		for (int x = 0; x&lt;width; x++) {
+			float r = sqrt((float)(x*x + y*y));
+			double coeff = (1.0 - 1.0 / (1.0 + exp(r - threshold))) * (upper - lower) + lower;
+			for (int c = 0; c&lt;channel; c++) {
+				o_ptr-&gt;at&lt;float&gt;(y, x*channel + c) = coeff * i_ptr-&gt;at&lt;float&gt;(y, x*channel + c);
+			}
+		}
+	}
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+Método principal, responsável por ler um arquivo de imagem fornecido pelo usuário,
+configurar a exibição das imagens e setar o callback do mouse em uma imagem especifica
+*/
+int main() {
+
+	std::string arquivo;							// nome do arquivo
+	std::cout &lt;&lt; "Digite o nome do arquivo : ";
+	std::cin &gt;&gt; arquivo;							// armazenando o nome fornecido
+
+	imgOriginal = cv::imread(arquivo);			// abrindo a imagem
+
+	if (imgOriginal.empty()) {																	// verificando se é possível abrir a imagem
+		std::cout &lt;&lt; "error: o arquivo --&gt; " &lt;&lt; arquivo &lt;&lt; " &lt;-- não pode ser lido!\n\n";		// mensagem de erro caso contrário
+		system("pause");
+		return(0);																				// saindo do programa
+	}
+
+	int width = imgOriginal.cols;
+	int height = imgOriginal.rows;
+	int channel = imgOriginal.channels();
+	imgOriginal.convertTo(imgOriginal, CV_32FC3, 1.0 / 255.0);
+
+	// parametros para a filtragem - valores default
+	lower = 0.5f;
+	upper = 2.0f;
+	threshold = 7.5f;
+
+
+	// Declarando as janelas
+	cv::namedWindow("Original");
+	cv::namedWindow("Resultado");
+
+	// variavel de controle do loop
+	bool loop = true;
+
+	while (loop) {
+		// Aplicando a DFT, o filtro e a inversa da DFT
+		vector&lt;cv::Mat&gt; chs, spc(channel, cv::Mat(height, width, CV_32FC1));
+		cv::split(imgOriginal, chs);
+
+		for (int c = 0; c&lt;channel; c++) {
+			cv::dct(chs[c], spc[c]);
+			filtro(spc[c], spc[c], lower, upper, threshold);
+			cv::idct(spc[c], chs[c]);
+		}
+		cv::merge(chs, imgResult);
+
+		// Plotando os parametros na tela
+
+		system("cls");
+		std::cout &lt;&lt; "\nUse A para aumentar o Gama Low ou Z para diminuir";
+		std::cout &lt;&lt; "\nUse S para aumentar o Gama High ou X para diminuir";
+		std::cout &lt;&lt; "\nUse D para aumentar o Threshold ou C para diminuir";
+		std::cout &lt;&lt; "\n";
+		std::cout &lt;&lt; "\nGama Low \t: " &lt;&lt; lower;
+		std::cout &lt;&lt; "\nGama High \t: " &lt;&lt; upper;
+		std::cout &lt;&lt; "\nThreshold \t: " &lt;&lt; threshold;
+
+
+		// Apresentando os resultados
+		cv::imshow("Original", imgOriginal);
+		cv::imshow("Resultado", imgResult);
+
+		char key = (char) cv::waitKey(10);
+		if (key == 27) loop = false; // esc pressed!
+
+		switch (key) {
+			case 'a': //aumenta a escala para baixas frequencias
+				lower += 0.05f;
+				break;
+			case 'z': //diminui a escala para baixas frequencias
+				lower -= 0.05f;
+				break;
+			case 's': //aumenta a escala para altas frequencias
+				upper += 0.05f;
+				break;
+			case 'x': //diminui a escala para altas frequencias
+				upper -= 0.05f;
+				break;
+			case 'd': //aumenta o valor de threshold
+				threshold += 0.05f;
+				break;
+			case 'c': //diminui o valor de threshold
+				threshold -= 0.05f;
+				break;
+			default:
+				break;
+		}
+
+	}
+
+	cv::destroyAllWindows();
+	return(0);
+
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_atividade_11_1">Atividade 11.1</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>Esta ativida visa trabalhar de forma mais profunda dois algoritmos apresentados pelo professor, o algoritmo de bordas de Canny e o algoritmo de Pontilhismo. Neste caso, deve-se "casar" os algoritmos a fim de se obter um resultado mais refinado do algoritmo de Pontilhismo.</p>
+</li>
+<li>
+<p>Para isto, foi utilizado os arquivos fornecidos e realizado pequenos ajustes para que se adequa-se os resultados. Basicamente o algoritmo lê uma imagem, aplica o processo de Canny e a partir do seu resultado aplica a técnica de Pontilhismo. Foram refinado os parametros <strong>STEP</strong>, <strong>JITTER</strong> e <strong>RAIO</strong> do Pontilhismo a fim de termos uma imagem resultado mais consistente. Também foi aplicado um pequeno dinamismo ao valor do <strong>RAIO</strong> a partir do resultado de Canny, ou seja, durante o processo de pontilhamento caso o pixel avaliado seja borda, o raio ganha um valor minimo, caso contrário o raio permanece no seu valor <em>default</em>. Assim, podemos garantir uma definição nas bordas da imagem resultado.</p>
+</li>
+</ul>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p><strong>OBS.:</strong> Foi mantido também o <em>slider</em> existente no algoritmo de Canny fornecido pelo professor, dessa forma pode-se sintonizar melhor qual resultado de Canny gera um melhor resultado na imagem pontilhada.</p>
+</div>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-CPP" data-lang="CPP">/*
+UNIVERSIDADE FEDERAL DO RIO GRANDE DO NROTE
+DEPARTAMENTO DE COMPUTAÇÃO E AUTOMAÇÃO
+PROCESSAMENTO DIGITAL DE IMAGENS
+PROF. AGOSTINHO BRITO JR.
+
+UNIDADE II
+EXERCICIO 11.1
+
+RODRIGO DANTAS DA SILVA - 2008020606
+
+*/
+
+#include &lt;iostream&gt;
+#include &lt;cmath&gt;
+#include &lt;vector&gt;
+#include &lt;string&gt;
+#include &lt;fstream&gt;
+#include &lt;iomanip&gt;
+#include &lt;algorithm&gt;
+#include &lt;numeric&gt;
+#include &lt;ctime&gt;
+#include &lt;cstdlib&gt;
+#include &lt;opencv2/opencv.hpp&gt;
+
+using namespace std;
+using namespace cv;
+
+
+Mat imgOriginal;		// imagem original
+Mat imgResult;			// imagem resultado
+Mat imageCanny;			// imagem utilizada pelo processamento do algoritmo de Canny
+Mat borderCanny;		// imagem das bordas processadas pelo algoritmo de Canny
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+Algoritmo de Pontilhismo
+*/
+#define STEP 2
+#define JITTER 1
+int RAIO = 2;
+
+void pontilhismo(Mat border) {
+	vector&lt;int&gt; yrange;
+	vector&lt;int&gt; xrange;
+
+	Mat imagePontilhismo, imageBase;
+
+	int width, height, gray;
+	int x, y;
+
+	border.copyTo(imagePontilhismo);
+	//cvtColor(border, imagePontilhismo, CV_BGR2GRAY);
+	cvtColor(imgOriginal, imageBase, CV_BGR2GRAY);
+
+	srand(time(0));
+
+	width = imagePontilhismo.size().width;
+	height = imagePontilhismo.size().height;
+
+	xrange.resize(height / STEP);
+	yrange.resize(width / STEP);
+
+	iota(xrange.begin(), xrange.end(), 0);
+	iota(yrange.begin(), yrange.end(), 0);
+
+	for (uint i = 0; i&lt;xrange.size(); i++) {
+		xrange[i] = xrange[i] * STEP + STEP / 2;
+		yrange[i] = yrange[i] * STEP + STEP / 2;
+	}
+
+	imgResult = Mat(height, width, CV_8U, Scalar(255));
+
+	random_shuffle(xrange.begin(), xrange.end());
+
+	for (auto i : xrange) {
+		random_shuffle(yrange.begin(), yrange.end());
+		for (auto j : yrange) {
+			x = i + rand() % (2 * JITTER) - JITTER + 1;
+			y = j + rand() % (2 * JITTER) - JITTER + 1;
+			gray = imageBase.at&lt;uchar&gt;(x, y); // &lt;-- aqui tenho que inserir o borderCanny para referencia de onde pintar as bolinhas (quanto maior o threshold do Canny ... maior o diametro das bolinhas)
+
+			if (imagePontilhismo.at&lt;uchar&gt;(x, y) == 0) {
+				RAIO = 1;
+			} else {
+				RAIO = 2;
+			}
+
+			circle(imgResult,
+				cv::Point(y, x),
+				RAIO,
+				CV_RGB(gray, gray, gray),
+				-1,
+				CV_AA);
+		}
+	}
+
+
+	namedWindow("Resultado", CV_WINDOW_AUTOSIZE);
+	imshow("Resultado", imgResult);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+Parametros e Método auxiliar para Canny
+*/
+int top_slider = 10;
+int top_slider_max = 200;
+
+char TrackbarName[50];
+
+void on_trackbar_canny(int, void*) {
+	Canny(imageCanny, borderCanny, top_slider, 3 * top_slider);
+	imshow("Canny", borderCanny);
+
+	// Criando um "negativo" da imagem
+	int width = borderCanny.size().width;
+	int height = borderCanny.size().height;
+
+	for (int i = 0; i &lt; height;i++) {
+		for (int j = 0; j&lt; width;j++) {
+			borderCanny.at&lt;uchar&gt;(i, j) = 255 - borderCanny.at&lt;uchar&gt;(i, j);
+		}
+	}
+
+	pontilhismo(borderCanny);
+}
+
+void canny() {
+	int widthCanny, heightCanny;
+
+	imgOriginal.copyTo(imageCanny);
+
+	widthCanny = imageCanny.size().width;
+	heightCanny = imageCanny.size().height;
+
+	sprintf_s(TrackbarName, "Threshold inferior", top_slider_max);
+
+	namedWindow("Canny", CV_WINDOW_AUTOSIZE);
+	createTrackbar(TrackbarName, "Canny",
+		&amp;top_slider,
+		top_slider_max,
+		on_trackbar_canny);
+
+	on_trackbar_canny(top_slider, 0);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+Método principal, responsável por ler um arquivo de imagem fornecido pelo usuário,
+configurar a exibição das imagens e setar o callback do mouse em uma imagem especifica
+*/
+int main() {
+
+	std::string arquivo;							// nome do arquivo
+	std::cout &lt;&lt; "Digite o nome do arquivo : ";
+	std::cin &gt;&gt; arquivo;							// armazenando o nome fornecido
+
+	imgOriginal = cv::imread(arquivo);			// abrindo a imagem
+
+	if (imgOriginal.empty()) {																	// verificando se é possível abrir a imagem
+		std::cout &lt;&lt; "error: o arquivo --&gt; " &lt;&lt; arquivo &lt;&lt; " &lt;-- não pode ser lido!\n\n";		// mensagem de erro caso contrário
+		system("pause");
+		return(0);																				// saindo do programa
+	}
+
+	canny();
+
+	waitKey(0);
+	return(0);
+
+}</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 1.0<br>
-Last updated 2016-03-22 00:37:55 AMT
+Version 1.2<br>
+Last updated 2016-05-06 03:25:23 BRT
 </div>
 </div>
 </body>
